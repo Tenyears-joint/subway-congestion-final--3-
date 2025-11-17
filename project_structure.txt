@@ -1,0 +1,52 @@
+subway-congestion-prediction/
+├── .env                          # API 키 저장
+├── .gitignore                    # Git 제외 파일
+├── README.md                     # 프로젝트 설명
+├── requirements.txt              # 필요 라이브러리
+│
+├── data/                         # 데이터 저장소
+│   ├── raw/                      # 원본 데이터
+│   │   ├── subway/              # 지하철 승하차 데이터
+│   │   ├── weather/             # 날씨 데이터
+│   │   └── congestion/          # 혼잡도 통계
+│   ├── processed/                # 전처리 데이터
+│   └── external/                 # 외부 데이터 (공휴일 등)
+│
+├── notebooks/                    # Jupyter 노트북
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_data_preprocessing.ipynb
+│   └── 03_model_training.ipynb
+│
+├── src/                          # 소스 코드
+│   ├── __init__.py
+│   ├── data_collector.py        # 데이터 수집
+│   ├── preprocessor.py          # 데이터 전처리
+│   ├── feature_engineering.py   # 피처 엔지니어링
+│   ├── model_trainer.py         # 모델 학습
+│   └── predictor.py             # 예측 로직
+│
+├── models/                       # 학습된 모델
+│   ├── congestion_model.pkl
+│   ├── label_encoders.pkl
+│   └── model_info.pkl
+│
+├── app/                          # 웹 애플리케이션
+│   ├── __init__.py
+│   ├── app.py                   # Flask 메인 앱
+│   ├── routes.py                # API 라우트
+│   ├── templates/               # HTML 템플릿
+│   │   └── index.html
+│   └── static/                  # 정적 파일
+│       ├── css/
+│       ├── js/
+│       └── images/
+│
+├── tests/                        # 테스트 코드
+│   ├── test_data_collector.py
+│   ├── test_preprocessor.py
+│   └── test_predictor.py
+│
+└── scripts/                      # 유틸리티 스크립트
+    ├── setup_project.py         # 프로젝트 초기 설정
+    ├── collect_all_data.py      # 전체 데이터 수집
+    └── train_model.py           # 모델 학습 실행
