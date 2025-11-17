@@ -201,8 +201,8 @@ This project is licensed under the MIT License
 ## 👥 개발자
 
 - **이름**: [Your Name]
-- **이메일**: [your.email@example.com]
-- **GitHub**: [@yourusername](https://github.com/yourusername)
+- **이메일**: [kimmin880123@gmail.com]
+- **GitHub**: [@Tenyears-joint](https://github.com/Tenyears-joint)
 
 ## 🙏 감사의 말
 
