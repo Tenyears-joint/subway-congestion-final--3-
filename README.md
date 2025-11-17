@@ -200,7 +200,7 @@ This project is licensed under the MIT License
 
 ## 👥 개발자
 
-- **이름**: [Your Name]
+- **이름**: [.]
 - **이메일**: [kimmin880123@gmail.com]
 - **GitHub**: [@Tenyears-joint](https://github.com/Tenyears-joint)
 
