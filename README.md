@@ -36,7 +36,7 @@
 
 - **언어**: Python 3.9+
 - **머신러닝**: scikit-learn
-- **웹 프레임워크**: Flask
+- **웹 프레임워크**: FastAI
 - **데이터 처리**: pandas, numpy
 - **시각화**: matplotlib, seaborn
 

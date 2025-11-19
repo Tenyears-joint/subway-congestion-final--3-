@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울 지하철 혼잡도 예측</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .result-value {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .congestion-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.2em;
+            color: white;
+        }
+
+        .recommendation {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .recommendation strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #667eea;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hour-chart {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .hour-item {
+            text-align: center;
+            padding: 15px 8px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .hour-item:hover {
+            transform: scale(1.05);
+        }
+
+        .hour-time {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .hour-level {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .hour-chart {
+                grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚇 서울 지하철 혼잡도 예측 및 분석 도우미</h1>
+            <p> 당신을 위한 실시간 지하철 혼잡도 분석기</p>
+        </div>
+
+        <div class="card">
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label for="stationName">🚉 역 이름</label>
+                    <input type="text" id="stationName" placeholder="예: 강남역" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lineName">🚆 호선</label>
+                    <select id="lineName" required>
+                        <option value="">호선을 선택하세요</option>
+                        <option value="1호선">1호선</option>
+                        <option value="2호선">2호선</option>
+                        <option value="3호선">3호선</option>
+                        <option value="4호선">4호선</option>
+                        <option value="5호선">5호선</option>
+                        <option value="6호선">6호선</option>
+                        <option value="7호선">7호선</option>
+                        <option value="8호선">8호선</option>
+                        <option value="9호선">9호선</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="hour">⏰ 시간</label>
+                    <select id="hour" required>
+                        <option value="">시간을 선택하세요</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn">혼잡도 예측하기</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 15px; color: #666;">예측 중...</p>
+            </div>
+
+            <div class="result" id="result">
+                <h2>📊 예측 결과</h2>
+                
+                <div class="result-item">
+                    <span class="result-label">역 이름</span>
+                    <span class="result-value" id="resultStation">-</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">호선</span>
+                    <span class="result-value" id="resultLine">-</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">시간</span>
+                    <span class="result-value" id="resultTime">-</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">혼잡도</span>
+                    <span class="congestion-badge" id="resultCongestion">-</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">예상 승하차 인원</span>
+                    <span class="result-value" id="resultPassengers">-</span>
+                </div>
+
+                <div class="result-item">
+                    <span class="result-label">예측 신뢰도</span>
+                    <span class="result-value" id="resultConfidence">-</span>
+                </div>
+
+                <div class="recommendation">
+                    <strong>💡 추천</strong>
+                    <span id="resultRecommendation">-</span>
+                </div>
+
+                <div class="chart-container" id="hourlyChart" style="display: none;">
+                    <div class="chart-title">시간대별 혼잡도</div>
+                    <div class="hour-chart" id="hourlyChartContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API 기본 URL
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // 시간 옵션 생성
+        const hourSelect = document.getElementById('hour');
+        for (let i = 5; i <= 23; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `${i}:00`;
+            hourSelect.appendChild(option);
+        }
+
+        // 현재 시간으로 설정
+        const currentHour = new Date().getHours();
+        hourSelect.value = currentHour;
+
+        // 폼 제출 처리
+        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const stationName = document.getElementById('stationName').value.trim();
+            const lineName = document.getElementById('lineName').value;
+            const hour = parseInt(document.getElementById('hour').value);
+
+            // 로딩 표시
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('result').classList.remove('show');
+
+            try {
+                // 예측 API 호출
+                const response = await fetch(`${API_BASE_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        station_name: stationName,
+                        line_name: lineName,
+                        hour: hour
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('예측 요청 실패');
+                }
+
+                const data = await response.json();
+
+                // 결과 표시
+                displayResult(data);
+
+                // 시간대별 혼잡도 조회
+                fetchHourlyPrediction(stationName, lineName);
+
+            } catch (error) {
+                alert('예측 중 오류가 발생했습니다: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        });
+
+        function displayResult(data) {
+            document.getElementById('resultStation').textContent = data.station_name;
+            document.getElementById('resultLine').textContent = data.line_name;
+            document.getElementById('resultTime').textContent = `${data.hour}:00`;
+            
+            const congestionBadge = document.getElementById('resultCongestion');
+            congestionBadge.textContent = data.congestion_label;
+            congestionBadge.style.backgroundColor = data.congestion_color;
+
+            document.getElementById('resultPassengers').textContent = 
+                `${data.predicted_passengers.toLocaleString()}명`;
+            document.getElementById('resultConfidence').textContent = 
+                `${data.confidence}%`;
+            document.getElementById('resultRecommendation').textContent = 
+                data.recommendation;
+
+            document.getElementById('result').classList.add('show');
+            document.getElementById('result').style.backgroundColor = 
+                data.congestion_color + '20';
+        }
+
+        async function fetchHourlyPrediction(stationName, lineName) {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/predict/hourly/${encodeURIComponent(stationName)}/${encodeURIComponent(lineName)}`
+                );
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                displayHourlyChart(data.hourly_predictions);
+
+            } catch (error) {
+                console.error('시간대별 예측 조회 실패:', error);
+            }
+        }
+
+        function displayHourlyChart(hourlyData) {
+            const chartContent = document.getElementById('hourlyChartContent');
+            chartContent.innerHTML = '';
+
+            hourlyData.forEach(item => {
+                const hourItem = document.createElement('div');
+                hourItem.className = 'hour-item';
+                hourItem.style.backgroundColor = item.congestion_color;
+                hourItem.innerHTML = `
+                    <div class="hour-time">${item.hour}시</div>
+                    <div class="hour-level">${item.congestion_label}</div>
+                `;
+                chartContent.appendChild(hourItem);
+            });
+
+            document.getElementById('hourlyChart').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
