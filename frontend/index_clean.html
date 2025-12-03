@@ -217,6 +217,7 @@
             color: white;
             font-weight: 600;
             transition: transform 0.2s;
+            cursor: pointer;
         }
 
         .hour-item:hover {
@@ -247,15 +248,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚇 서울 지하철 혼잡도 예측 및 분석 도우미</h1>
-            <p> 당신을 위한 실시간 지하철 혼잡도 분석기</p>
+            <h1>🚇 서울 지하철 혼잡도 예측</h1>
+            <p>AI 기반 실시간 혼잡도 분석</p>
         </div>
 
         <div class="card">
             <form id="predictionForm">
                 <div class="form-group">
                     <label for="stationName">🚉 역 이름</label>
-                    <input type="text" id="stationName" placeholder="예: 강남역" required>
+                    <input type="text" id="stationName" placeholder="예: 강남" required>
                 </div>
 
                 <div class="form-group">
@@ -278,6 +279,20 @@
                     <label for="hour">⏰ 시간</label>
                     <select id="hour" required>
                         <option value="">시간을 선택하세요</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dayOfWeek">📅 요일</label>
+                    <select id="dayOfWeek" required>
+                        <option value="">요일을 선택하세요</option>
+                        <option value="0">월요일</option>
+                        <option value="1">화요일</option>
+                        <option value="2">수요일</option>
+                        <option value="3">목요일</option>
+                        <option value="4">금요일</option>
+                        <option value="5">토요일</option>
+                        <option value="6">일요일</option>
                     </select>
                 </div>
 
@@ -308,18 +323,13 @@
                 </div>
 
                 <div class="result-item">
+                    <span class="result-label">요일</span>
+                    <span class="result-value" id="resultDay">-</span>
+                </div>
+
+                <div class="result-item">
                     <span class="result-label">혼잡도</span>
                     <span class="congestion-badge" id="resultCongestion">-</span>
-                </div>
-
-                <div class="result-item">
-                    <span class="result-label">예상 승하차 인원</span>
-                    <span class="result-value" id="resultPassengers">-</span>
-                </div>
-
-                <div class="result-item">
-                    <span class="result-label">예측 신뢰도</span>
-                    <span class="result-value" id="resultConfidence">-</span>
                 </div>
 
                 <div class="recommendation">
@@ -339,18 +349,27 @@
         // API 기본 URL
         const API_BASE_URL = 'http://localhost:8000';
 
+        // 혼잡도 색상 매핑
+        const CONGESTION_COLORS = {
+            '여유': '#4CAF50',
+            '보통': '#FFC107',
+            '혼잡': '#FF9800',
+            '매우혼잡': '#F44336'
+        };
+
         // 시간 옵션 생성
         const hourSelect = document.getElementById('hour');
-        for (let i = 5; i <= 23; i++) {
+        for (let i = 0; i <= 23; i++) {
             const option = document.createElement('option');
             option.value = i;
             option.textContent = `${i}:00`;
             hourSelect.appendChild(option);
         }
 
-        // 현재 시간으로 설정
-        const currentHour = new Date().getHours();
-        hourSelect.value = currentHour;
+        // 현재 시간/요일로 설정
+        const now = new Date();
+        hourSelect.value = now.getHours();
+        document.getElementById('dayOfWeek').value = (now.getDay() + 6) % 7;
 
         // 폼 제출 처리
         document.getElementById('predictionForm').addEventListener('submit', async (e) => {
@@ -359,13 +378,13 @@
             const stationName = document.getElementById('stationName').value.trim();
             const lineName = document.getElementById('lineName').value;
             const hour = parseInt(document.getElementById('hour').value);
+            const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
 
             // 로딩 표시
             document.getElementById('loading').classList.add('show');
             document.getElementById('result').classList.remove('show');
 
             try {
-                // 예측 API 호출
                 const response = await fetch(`${API_BASE_URL}/predict`, {
                     method: 'POST',
                     headers: {
@@ -374,7 +393,8 @@
                     body: JSON.stringify({
                         station_name: stationName,
                         line_name: lineName,
-                        hour: hour
+                        hour: hour,
+                        day_of_week: dayOfWeek
                     })
                 });
 
@@ -383,12 +403,8 @@
                 }
 
                 const data = await response.json();
-
-                // 결과 표시
                 displayResult(data);
-
-                // 시간대별 혼잡도 조회
-                fetchHourlyPrediction(stationName, lineName);
+                fetchHourlyPrediction(stationName, lineName, dayOfWeek);
 
             } catch (error) {
                 alert('예측 중 오류가 발생했습니다: ' + error.message);
@@ -398,36 +414,34 @@
         });
 
         function displayResult(data) {
-            document.getElementById('resultStation').textContent = data.station_name;
-            document.getElementById('resultLine').textContent = data.line_name;
-            document.getElementById('resultTime').textContent = `${data.hour}:00`;
+            document.getElementById('resultStation').textContent = data.input.station_name;
+            document.getElementById('resultLine').textContent = data.input.line_name;
+            document.getElementById('resultTime').textContent = `${data.input.hour}:00`;
+            document.getElementById('resultDay').textContent = data.input.day_name;
             
             const congestionBadge = document.getElementById('resultCongestion');
-            congestionBadge.textContent = data.congestion_label;
-            congestionBadge.style.backgroundColor = data.congestion_color;
+            const congestionLabel = data.prediction.congestion_label;
+            congestionBadge.textContent = congestionLabel;
+            congestionBadge.style.backgroundColor = CONGESTION_COLORS[congestionLabel];
 
-            document.getElementById('resultPassengers').textContent = 
-                `${data.predicted_passengers.toLocaleString()}명`;
-            document.getElementById('resultConfidence').textContent = 
-                `${data.confidence}%`;
-            document.getElementById('resultRecommendation').textContent = 
-                data.recommendation;
+            document.getElementById('resultRecommendation').textContent = data.recommendation;
 
             document.getElementById('result').classList.add('show');
             document.getElementById('result').style.backgroundColor = 
-                data.congestion_color + '20';
+                CONGESTION_COLORS[congestionLabel] + '15';
         }
 
-        async function fetchHourlyPrediction(stationName, lineName) {
+        async function fetchHourlyPrediction(stationName, lineName, dayOfWeek) {
             try {
                 const response = await fetch(
-                    `${API_BASE_URL}/predict/hourly/${encodeURIComponent(stationName)}/${encodeURIComponent(lineName)}`
+                    `${API_BASE_URL}/predict/hourly?station_name=${encodeURIComponent(stationName)}&line_name=${encodeURIComponent(lineName)}&day_of_week=${dayOfWeek}`,
+                    { method: 'POST' }
                 );
 
                 if (!response.ok) return;
 
                 const data = await response.json();
-                displayHourlyChart(data.hourly_predictions);
+                displayHourlyChart(data.predictions);
 
             } catch (error) {
                 console.error('시간대별 예측 조회 실패:', error);
@@ -441,7 +455,7 @@
             hourlyData.forEach(item => {
                 const hourItem = document.createElement('div');
                 hourItem.className = 'hour-item';
-                hourItem.style.backgroundColor = item.congestion_color;
+                hourItem.style.backgroundColor = CONGESTION_COLORS[item.congestion_label];
                 hourItem.innerHTML = `
                     <div class="hour-time">${item.hour}시</div>
                     <div class="hour-level">${item.congestion_label}</div>
